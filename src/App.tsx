@@ -37,10 +37,12 @@ import { FineTuneModal } from './components/FineTuneModal';
 import { HuggingFaceModal } from './components/HuggingFaceModal';
 import { InstallModal } from './components/InstallModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { ImageGeneratorView } from './components/image/ImageGeneratorView';
+import { AppView } from './types';
 
 export default function App() {
   // Navigation
-  const [currentView, setCurrentView] = useState<'chat' | 'modelLab' | 'settings'>('chat');
+  const [currentView, setCurrentView] = useState<AppView>('chat');
 
   // Threads & Messages
   const [threads, setThreads] = useState<Thread[]>(() => {
@@ -306,6 +308,8 @@ export default function App() {
           negativePrompt: activeNegatives,
           exemplars: currentModel.exemplars || [],
           memories: params.enforceLearnedRules ? memories : [],
+          skills: skills.filter((s) => s.enabled),
+          trainingRuns: trainingRuns.filter((tr) => tr.applied),
           customEndpoint,
         }),
       });
@@ -658,6 +662,14 @@ export default function App() {
               onImportData={handleImportData}
               onResetAllData={handleResetAllData}
               onShowToast={showToast}
+            />
+          )}
+
+          {/* Image Studio View */}
+          {currentView === 'imageStudio' && (
+            <ImageGeneratorView
+              onShowToast={showToast}
+              huggingFaceToken={huggingFaceUser?.token}
             />
           )}
 

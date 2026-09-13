@@ -634,6 +634,8 @@ async function startServer() {
       negativePrompt = '',
       exemplars = [],
       memories = [],
+      skills = [],
+      trainingRuns = [],
       customEndpoint,
     } = req.body;
 
@@ -652,6 +654,18 @@ async function startServer() {
       if (activeRules) {
         fullSystemInstruction += `\n\n[LEARNED MEMORIES & OPERATIONAL RULES]:\n${activeRules}`;
       }
+    }
+
+    if (skills && skills.length > 0) {
+      const activeSkills = skills
+        .map((s: any) => `- ${s.name}: ${s.desc}\n  Steps:\n  * ${s.steps.join('\n  * ')}`)
+        .join('\n\n');
+      fullSystemInstruction += `\n\n[AVAILABLE SKILL PROTOCOLS (Execute these zero-shot routines if relevant)]:\n${activeSkills}`;
+    }
+
+    if (trainingRuns && trainingRuns.length > 0) {
+      const activeRuns = trainingRuns.map((r: any) => r.name).join(', ');
+      fullSystemInstruction += `\n\n[INSTRUCTIONAL TUNING ATTACHMENTS]:\nYou are operating with weights modified by: ${activeRuns}. Adhere strictly to these implicit domain rules.`;
     }
 
     if (exemplars && exemplars.length > 0) {
@@ -890,7 +904,6 @@ async function startServer() {
         // Candidate models list ordered by primary choice with immediate fallbacks for quota or load spikes
         const candidateModels = [
           'gemini-3.1-flash-lite',
-          'gemini-3.8-flash',
           'gemini-flash-latest',
         ];
 
@@ -1194,7 +1207,9 @@ async function startServer() {
     // A. Engine: Gemini Nano Banana Image Generation
     if (engine === 'gemini') {
       try {
-        const ai = getGeminiClient();
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) throw new Error('GEMINI_API_KEY is not configured on the server.');
+        const ai = new GoogleGenAI({ apiKey });
         // Use gemini-3.1-flash-image if high quality or non-standard aspect, else gemini-3.1-flash-lite-image
         const isAdvancedSpec =
           imageSize === '2K' ||
@@ -1354,7 +1369,9 @@ async function startServer() {
     }
 
     try {
-      const ai = getGeminiClient();
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error('GEMINI_API_KEY is not configured on the server.');
+      const ai = new GoogleGenAI({ apiKey });
       const promptText = `Modify and transform this image according to the instruction: "${instruction}". ` +
         (stylePreset ? `Apply ${stylePreset} artistic style. ` : '') +
         `Retain the primary structural composition while executing the requested modifications cleanly.`;
@@ -1429,7 +1446,9 @@ async function startServer() {
     }
 
     try {
-      const ai = getGeminiClient();
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error('GEMINI_API_KEY is not configured on the server.');
+      const ai = new GoogleGenAI({ apiKey });
       const expansionSysPrompt =
         'You are an elite master prompt engineer for state-of-the-art image generators (FLUX.1, Midjourney v6, Imagen 3). ' +
         'Take the user\'s concept and expand it into a breathtaking, highly detailed, visually concrete prompt. ' +
@@ -1442,7 +1461,7 @@ async function startServer() {
       if (lighting) userQuery += ` Lighting: ${lighting}.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-3.1-flash-lite',
         contents: userQuery,
         config: {
           systemInstruction: expansionSysPrompt,
